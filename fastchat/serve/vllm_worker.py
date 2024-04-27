@@ -65,6 +65,7 @@ class VLLMWorker(BaseModelWorker):
             self.init_heart_beat()
 
     async def generate_stream(self, params):
+        # print(f'#### params: {params}')
         self.call_ct += 1
 
         context = params.pop("prompt")
@@ -84,6 +85,12 @@ class VLLMWorker(BaseModelWorker):
         best_of = params.get("best_of", None)
 
         request = params.get("request", None)
+
+        ## Support for additional args
+        include_stop_str_in_output = params.get("include_stop_str_in_output", False)
+        logprobs=params.get("logprobs", False)
+        # detokenize = params.get("detokenize", True)
+        skip_special_tokens = params.get("skip_special_tokens", False)
 
         # Handle stop_str
         stop = set()
@@ -115,10 +122,17 @@ class VLLMWorker(BaseModelWorker):
             presence_penalty=presence_penalty,
             frequency_penalty=frequency_penalty,
             best_of=best_of,
+            ## Additional args
+            include_stop_str_in_output=include_stop_str_in_output,
+            logprobs=logprobs,
+            # detokenize=detokenize,
+            skip_special_tokens=skip_special_tokens
         )
         results_generator = engine.generate(context, sampling_params, request_id)
 
+        num_yields = 0
         async for request_output in results_generator:
+            # print(f'>>>> request_output: {request_output}')
             prompt = request_output.prompt
             if echo:
                 text_outputs = [
@@ -145,6 +159,7 @@ class VLLMWorker(BaseModelWorker):
             completion_tokens = sum(
                 len(output.token_ids) for output in request_output.outputs
             )
+
             ret = {
                 "text": text_outputs,
                 "error_code": 0,
@@ -155,23 +170,33 @@ class VLLMWorker(BaseModelWorker):
                 },
                 "cumulative_logprob": [
                     output.cumulative_logprob for output in request_output.outputs
-                ],
+                ]
                 "finish_reason": request_output.outputs[0].finish_reason
                 if len(request_output.outputs) == 1
                 else [output.finish_reason for output in request_output.outputs],
             }
+            # print(f'>>>> ret: {ret}')
             # Emit twice here to ensure a 'finish_reason' with empty content in the OpenAI API response.
             # This aligns with the behavior of model_worker.
             if request_output.finished:
+                num_yields += 1
+                # print('>>>> yield (request_output.finished)')
                 yield (json.dumps({**ret, **{"finish_reason": None}}) + "\0").encode()
+            num_yields += 1
+            # print('>>>> yield (request_output.finished)')
             yield (json.dumps(ret) + "\0").encode()
 
             if aborted:
+                # print('>>>> aborted')
                 break
+        # print(f'>>>> num_yields: {num_yields}')
+        if not num_yields:
+            print(f'>>>> yield nothing, context: {context} ')
 
     async def generate(self, params):
         async for x in self.generate_stream(params):
             pass
+        # print(f'>>>> x: {x}')
         return json.loads(x[:-1].decode())
 
 
