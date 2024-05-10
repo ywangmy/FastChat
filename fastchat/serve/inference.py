@@ -86,6 +86,11 @@ def generate_stream(
     if tokenizer.eos_token_id not in stop_token_ids:
         stop_token_ids.append(tokenizer.eos_token_id)
 
+    ## Additional Parameters for outputs
+    include_stop_str_in_output = params.get("include_stop_str_in_output", False)
+    skip_special_tokens = params.get("skip_special_tokens", False)
+    # output_hidden_states = params.get("output_hidden_states", False)
+
     logits_processor = prepare_logits_processor(
         temperature, repetition_penalty, top_p, top_k
     )
@@ -213,7 +218,7 @@ def generate_stream(
 
             output = tokenizer.decode(
                 tmp_output_ids,
-                skip_special_tokens=True,
+                skip_special_tokens=skip_special_tokens,
                 spaces_between_special_tokens=False,
                 clean_up_tokenization_spaces=True,
             )
@@ -254,6 +259,8 @@ def generate_stream(
                 if isinstance(stop_str, str):
                     pos = output.rfind(stop_str, rfind_start)
                     if pos != -1:
+                        if include_stop_str_in_output:
+                            pos += len(stop_str)
                         output = output[:pos]
                         stopped = True
                     else:
@@ -262,6 +269,8 @@ def generate_stream(
                     for each_stop in stop_str:
                         pos = output.rfind(each_stop, rfind_start)
                         if pos != -1:
+                            if include_stop_str_in_output:
+                                pos += len(each_stop)
                             output = output[:pos]
                             stopped = True
                             break
@@ -284,7 +293,6 @@ def generate_stream(
                     },
                     "finish_reason": None,
                 }
-
         if stopped:
             break
 
