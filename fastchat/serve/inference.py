@@ -70,7 +70,6 @@ def generate_stream(
 ):
     if hasattr(model, "device"):
         device = model.device
-
     # Read parameters
     prompt = params["prompt"]
     len_prompt = len(prompt)
@@ -223,6 +222,7 @@ def generate_stream(
                 clean_up_tokenization_spaces=True,
             )
             ret_logprobs = None
+            ret_cumulative_logprob = None
             if logprobs is not None:
                 ret_logprobs = {
                     "text_offset": [],
@@ -238,6 +238,7 @@ def generate_stream(
                     "top_logprobs": [{}]
                     * len(token_logprobs if echo else token_logprobs[input_echo_len:]),
                 }
+                ret_cumulative_logprob = sum(ret_logprobs["token_logprobs"])
                 # Compute text_offset
                 curr_pos = 0
                 for text in ret_logprobs["tokens"]:
@@ -286,6 +287,7 @@ def generate_stream(
                 yield {
                     "text": output,
                     "logprobs": ret_logprobs,
+                    "cumulative_logprob": ret_cumulative_logprob,
                     "usage": {
                         "prompt_tokens": input_echo_len,
                         "completion_tokens": i,
@@ -306,6 +308,7 @@ def generate_stream(
     yield {
         "text": output,
         "logprobs": ret_logprobs,
+        "cumulative_logprob": ret_cumulative_logprob,
         "usage": {
             "prompt_tokens": input_echo_len,
             "completion_tokens": i,

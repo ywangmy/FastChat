@@ -129,6 +129,8 @@ class ModelWorker(BaseModelWorker):
                     ret["finish_reason"] = output["finish_reason"]
                 if "logprobs" in output:
                     ret["logprobs"] = output["logprobs"]
+                if "cumulative_logprob" in output:
+                    ret["cumulative_logprob"] = output["cumulative_logprob"]
                 yield json.dumps(ret).encode() + b"\0"
         except torch.cuda.OutOfMemoryError as e:
             ret = {
