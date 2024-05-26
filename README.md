@@ -50,7 +50,7 @@ pip3 install "fschat[model_worker,webui]"
 
 1. Clone this repository and navigate to the FastChat folder
 ```bash
-git clone https://github.com/lm-sys/FastChat.git
+git clone https://github.com/ywangmy/FastChat.git
 cd FastChat
 ```
 
